@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Sessions</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            max-width: 700px;
+            margin: 2rem auto
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse
+        }
+
+        th,
+        td {
+            padding: .5rem;
+            border-bottom: 1px solid #ddd;
+            text-align: left
+        }
+
+        button {
+            padding: .3rem .7rem;
+            margin: 0 .2rem
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Sessions – <span id="schName"></span></h2>
+    <table id="tbl"></table>
+
+    <script>
+        const params = new URLSearchParams(location.search);
+        const scheduleId = params.get('id');
+        const scheduleName = decodeURIComponent(params.get('name') || '');
+        document.getElementById('schName').textContent = scheduleName;
+
+        const tkn = localStorage.getItem('token');
+        if (!tkn || !scheduleId) location.href = '/login.html';
+
+        function render(rows) {
+            const tbl = document.getElementById('tbl');
+            tbl.innerHTML =
+                '<tr><th>Name</th><th>Date</th><th>Status</th><th>Actions</th></tr>' +
+                rows.map(r => {
+                    const statusClass = (r.pmdm__Status__c || '').toLowerCase().replace(/\s+/g, '');
+                    return `<tr data-id="${r.Id}">
+       <td>${r.Name}</td>
+       <td>${r.pmdm__SessionStart__c || ''}</td>
+       <td><span class="badge ${statusClass}">${r.pmdm__Status__c || ''}</span></td>
+        <td>
+    <button class="pending">Pending</button>
+    <button class="complete">Complete</button>
+    <button class="remove">Remove</button>
+  </td>
+     </tr>`;
+                }).join('');
+
+        }
+
+        async function load() {
+            const r = await fetch(`/schedules/${scheduleId}/sessions`, {
+                headers: { Authorization: `Bearer ${tkn}` }
+            });
+            render(await r.json());
+        }
+
+        document.getElementById('tbl').onclick = async e => {
+            const btn = e.target;
+            const tr = btn.closest('tr[data-id]');
+            if (!tr) return;
+            const id = tr.dataset.id;
+
+            const tkn = localStorage.getItem('token'); // ensure token is available
+
+            if (btn.className === 'pending') {
+                await fetch(`/sessions/${id}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${tkn}`
+                    },
+                    body: JSON.stringify({ pmdm__Status__c: 'Pending' })
+                });
+            }
+
+            if (btn.className === 'complete') {
+                await fetch(`/sessions/${id}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${tkn}`
+                    },
+                    body: JSON.stringify({ pmdm__Status__c: 'Complete' })
+                });
+            }
+
+            if (btn.className === 'remove') {
+                await fetch(`/sessions/${id}`, {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${tkn}` }
+                });
+            }
+
+            load(); // refresh list
+        };
+
+
+        load();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Guide login</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            max-width: 320px;
+            margin: 4rem auto;
+            text-align: center
+        }
+
+        input,
+        button {
+            padding: .5rem 1rem;
+            font-size: 1rem
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Guide Attendance</h1>
+
+    <form id="loginForm">
+        <input id="email" type="email" placeholder="guide@example.org" required />
+        <button>Sign in</button>
+    </form>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async e => {
+            e.preventDefault();
+            const email = e.target.email.value.trim();
+            console.log(e)
+            try {
+                const r = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                if (r.status === 404) return location.href = '/nocontact.html';
+                if (!r.ok) throw new Error('Server error');
+
+                const { token } = await r.json();
+                localStorage.setItem('token', token);
+                localStorage.setItem('guideEmail', email);
+
+                location.href = '/schedules.html';
+            } catch (err) {
+                alert(err.message);
+            }
+        });
+    </script>
+</body>
+
+</html>
